@@ -1,5 +1,7 @@
 # Rusty Arena
 
+Ocena: 10 i diplomski
+
 ## Kratak opis
 
 RustyArena predstavlja jednostavnu multiplayer igru koja za cilj ima prikaz mogućnosti i prednosti korišćenja programskog jezika Rust u razvoju mrežnih aplikacija i video igara.
