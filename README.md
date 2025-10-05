@@ -10,7 +10,7 @@ Klijentska strana igre se razvija pomoću Godot engine-a, dok je serverski deo i
 
 ## Zašto
 
-Rust relativno nov programski jezik poznat zbog sigurnosti memorije, performansi i kontrol niskog nivoa. 
+Rust relativno nov programski jezik poznat zbog sigurnosti memorije, performansi i kontrole niskog nivoa. 
 
 Godot je besplatan i open-source engine, za razliku od Unity-a i nekih drugih game engine-a, koji omogućava jednostavan razvoj video igara.
 
@@ -33,8 +33,10 @@ Godot je besplatan i open-source engine, za razliku od Unity-a i nekih drugih ga
     - Health sistem
     - Bodovanje/Rezultat
 
-## Arhitektura
-
-
+## Alati
+- Rust (Cargo)
+- Godot Engine 4.x (Linux build)
+- Git/Github 
+    
 
 - Napomena: Dokument će biti proširen kako teče implementacija
