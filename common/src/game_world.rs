@@ -56,20 +56,20 @@ impl GameWorld {
     }
 
     pub fn update(&mut self) {
-        let max_distance = 1000.0;
+        let bullet_max_distance = 1000.0;
 
         self.bullets.iter_mut().for_each(|b| {
-            b.x += b.vx * 0.016;
-            b.y += b.vy * 0.016;
+            b.x += b.vx;
+            b.y += b.vy;
             b.distance_traveled += (b.vx * 0.16).hypot(b.vy * 0.016);
         });
 
-        self.bullets.retain(|b| b.distance_traveled < max_distance);
+        self.bullets.retain(|b| b.distance_traveled < bullet_max_distance);
 
         // here we should update the world per tick
         for player in self.players.values_mut() {
-            player.x += player.vx * 0.016;
-            player.y += player.vy * 0.016;
+            player.x += player.vx;
+            player.y += player.vy;
 
             // Optional: wrap around the world boundaries
             if player.x < 0.0 {

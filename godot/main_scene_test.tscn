@@ -1,7 +1,6 @@
-[gd_scene load_steps=3 format=3 uid="uid://fjql0s61n1fo"]
+[gd_scene load_steps=2 format=3 uid="uid://fjql0s61n1fo"]
 
 [ext_resource type="Script" uid="uid://btehep87etlv3" path="res://scripts/network_client.gd" id="1_5w4vv"]
-[ext_resource type="Texture2D" uid="uid://dbyawvqhmter4" path="res://icon.svg" id="2_uip10"]
 
 [node name="Game" type="Node2D"]
 position = Vector2(-2, 0)
@@ -13,15 +12,8 @@ metadata/_edit_lock_ = true
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(576, 327)
 
-[node name="World" type="Node2D" parent="."]
-
-[node name="Player" type="PlayerWrapper" parent="World"]
-network_path = NodePath("../../NetworkClient")
-position = Vector2(574, 311)
-up_direction = Vector2(0.8165377, -0.5772922)
-
-[node name="Sprite2D" type="Sprite2D" parent="World/Player"]
-texture = ExtResource("2_uip10")
+[node name="World" type="World" parent="."]
+network_path = NodePath("../NetworkClient")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 

@@ -98,6 +98,5 @@ async fn game_loop(
         if elapsed < tick_duration {
             tokio::time::sleep(tick_duration - elapsed).await;
         }
-        println!("brm, next ->");
     }
 }
