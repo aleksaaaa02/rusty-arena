@@ -1,0 +1,26 @@
+[gd_scene load_steps=2 format=3 uid="uid://fjql0s61n1fo"]
+
+[ext_resource type="Script" uid="uid://btehep87etlv3" path="res://scripts/network_client.gd" id="1_5w4vv"]
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_5w4vv")
+
+[node name="NetworkClient" type="NetworkClient" parent="."]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(576, 327)
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Player" type="Player" parent="World"]
+network_path = NodePath("../../NetworkClient")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="ScoreLabel" type="Label" parent="CanvasLayer"]
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="InfoPanel" type="Panel" parent="CanvasLayer"]
+offset_right = 40.0
+offset_bottom = 40.0
