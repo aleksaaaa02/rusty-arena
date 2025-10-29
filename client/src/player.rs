@@ -1,12 +1,10 @@
-use crate::game_world::GameWorldWrapper;
 use crate::net::NetworkClient;
-use crate::player;
 use godot::classes::{CharacterBody2D, ICharacterBody2D, Input};
 use godot::prelude::*;
 
 #[derive(GodotClass)]
 #[class(base=CharacterBody2D)]
-struct PlayerWrapper {
+pub struct PlayerWrapper {
     #[base]
     base: Base<CharacterBody2D>,
     id: u32,
@@ -41,13 +39,6 @@ impl ICharacterBody2D for PlayerWrapper {
     fn ready(&mut self) {
         let node = self.base().get_node_as::<NetworkClient>(&self.network_path);
         if let client = node {
-            godot_print!("Subscribing player to network...");
-            client
-                .signals()
-                .new_snapshot()
-                .connect_other(self, |this, _world| {
-                    this.on_snapshot_update(_world);
-                });
             godot_print!("Creating player's client...");
             self.network_client = Some(client.clone());
             godot_print!("Player connected to NetworkClient node");
@@ -57,6 +48,16 @@ impl ICharacterBody2D for PlayerWrapper {
     }
 
     fn physics_process(&mut self, delta: f64) {
+        {
+            let new_post = Vector2 {
+                x: self.data.x,
+                y: self.data.y,
+            };
+            let rotation = self.data.rotation;
+            self.base_mut().set_global_position(new_post);
+            self.base_mut().set_rotation(rotation);
+        }
+
         let input = Input::singleton();
 
         if input.is_action_pressed("ui_left") {
@@ -84,20 +85,17 @@ impl ICharacterBody2D for PlayerWrapper {
 
 #[godot_api]
 impl PlayerWrapper {
+    pub fn update_position(&mut self, new_position: Vector3) {
+        self.data.x = new_position.x;
+        self.data.y = new_position.y;
+        self.data.rotation = new_position.z;
+    }
 
-    #[func]
-    pub fn on_snapshot_update(&mut self, world_wrapper: Gd<GameWorldWrapper>) {
-        let world = &world_wrapper.bind().game_world;
+    pub fn set_id(&mut self, id: u32) {
+        self.data.id = id;
+    }
 
-        godot_print!("{:?}", world);
-
-        if let Some(player_data) = world.players.get(&self.id) {
-            self.base_mut().set_global_position(Vector2 { x: player_data.x, y: player_data.y });
-
-            self.base_mut().set_rotation(player_data.rotation);
-
-            self.data.vx = player_data.vx;
-            self.data.vy = player_data.vy;
-        }
+    pub fn set_client_network(&mut self, network_client :Gd<NetworkClient>){
+        self.network_client = Some(network_client);
     }
 }
