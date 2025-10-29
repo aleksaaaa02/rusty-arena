@@ -5,6 +5,9 @@ extends Node2D
 func _ready():
 	print("ready or not here I come")
 	$NetworkClient.connect_to_server("127.0.0.1", 8080)
+	print("Listen here")
+	$NetworkClient.start_listening()
+
 
 # func _on_connected():
 # 	print("Successfully connected to game server!")

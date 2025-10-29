@@ -1,10 +1,13 @@
+use common::game_world::GameWorld;
 use common::packet::PlayerInput;
 use godot::classes::{INode, Node};
 use godot::prelude::*;
-use std::sync::{Arc};
+use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::runtime::Runtime;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Sender, UnboundedReceiver, unbounded_channel};
+
+use crate::game_world::GameWorldWrapper;
 
 #[derive(GodotClass)]
 #[class(base=Node)]
@@ -15,6 +18,7 @@ pub struct NetworkClient {
     server_addr: String,
     is_connected: bool,
     input_tx: Option<Sender<PlayerInput>>,
+    snapshot_rx: Option<UnboundedReceiver<GameWorld>>,
 }
 
 #[godot_api]
@@ -27,13 +31,68 @@ impl INode for NetworkClient {
             server_addr: String::new(),
             input_tx: None,
             is_connected: false,
+            snapshot_rx: None,
         }
     }
 
+    fn process(&mut self, delta: f64) {
+        if let Some(mut rx) = self.snapshot_rx.take() {
+            let mut worlds = Vec::new();
+
+            while let Ok(world) = rx.try_recv() {
+                worlds.push(world);
+            }
+
+            self.snapshot_rx = Some(rx);
+
+            for world in worlds {
+                let world_wrapped = GameWorldWrapper::from_game_world(world);
+                self.base_mut()
+                    .emit_signal("new_snapshot", &[world_wrapped.to_variant()]);
+            }
+        }
+    }
 }
 
 #[godot_api]
 impl NetworkClient {
+    #[signal]
+    pub fn new_snapshot(world: Gd<GameWorldWrapper>);
+
+    #[func]
+    fn start_listening(&mut self) {
+        let Some(socket) = &self.socket else {
+            godot_error!("Not listening");
+            return;
+        };
+
+        let listen_sock = socket.clone();
+        let (tx, rx) = unbounded_channel();
+        self.snapshot_rx = Some(rx);
+
+        self.runtime.spawn(async move {
+            let mut buf = [0u8; 4096];
+            let config = bincode::config::standard();
+            loop {
+                match listen_sock.recv(&mut buf).await {
+                    Ok(len) => {
+                        if let Ok((world, _)) =
+                            bincode::decode_from_slice::<GameWorld, _>(&buf[..len], config)
+                        {
+                            if tx.send(world).is_err() {
+                                break;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        godot_error!("Failed to receive snapshot: {}", e);
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
     #[func]
     pub fn connect_to_server(&mut self, server_ip: GString, server_port: i32) {
         let addr = format!("{}:{}", server_ip, server_port);
@@ -61,21 +120,20 @@ impl NetworkClient {
     pub fn send_input(&self, id: u32, action_code: u32) {
         godot_print!("SENDING INPUT");
         let socket = self.socket.clone();
-        let input = common::packet::PlayerInput  {
+        let input = common::packet::PlayerInput {
             id: id,
             action: match action_code {
-                1 => common::packet::InputAction::RotateLeft ,
-                2 => common::packet::InputAction::RotateRight ,
-                3 => common::packet::InputAction::Shoot ,
-                4 => common::packet::InputAction::Thrust ,
-                _ => common::packet::InputAction::Shoot 
-            }
+                1 => common::packet::InputAction::RotateLeft,
+                2 => common::packet::InputAction::RotateRight,
+                3 => common::packet::InputAction::Thrust,
+                4 => common::packet::InputAction::Shoot,
+                _ => common::packet::InputAction::Shoot,
+            },
         };
-            
+
         let input_bytes = bincode::encode_to_vec(input, bincode::config::standard()).unwrap();
         self.runtime.spawn(async move {
             let _ = socket.unwrap().send(&input_bytes).await;
         });
     }
 }
-
