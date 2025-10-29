@@ -64,7 +64,8 @@ impl GameWorld {
             b.distance_traveled += (b.vx * 0.16).hypot(b.vy * 0.016);
         });
 
-        self.bullets.retain(|b| b.distance_traveled < bullet_max_distance);
+        self.bullets
+            .retain(|b| b.distance_traveled < bullet_max_distance);
 
         // here we should update the world per tick
         for player in self.players.values_mut() {
@@ -121,6 +122,8 @@ impl GameWorld {
                 }
                 _ => {}
             }
+        } else {
+            eprintln!("Entity with id: {player_id} not found!")
         }
     }
 
@@ -132,8 +135,8 @@ impl GameWorld {
                 x: 0.0,
                 y: 0.0,
                 rotation: 0.0,
-                vx: 800.0 / 2.0,
-                vy: 800.0 / 2.0,
+                vx: 0.0,
+                vy: 0.0,
                 hp: 100,
             },
         );

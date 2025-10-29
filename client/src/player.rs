@@ -93,6 +93,7 @@ impl PlayerWrapper {
 
     pub fn set_id(&mut self, id: u32) {
         self.data.id = id;
+        self.id = id;
     }
 
     pub fn set_client_network(&mut self, network_client :Gd<NetworkClient>){

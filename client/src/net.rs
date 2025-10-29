@@ -3,7 +3,8 @@ use common::packet::PlayerInput;
 use godot::classes::{INode, Node};
 use godot::prelude::*;
 use std::sync::Arc;
-use tokio::net::UdpSocket;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpStream, UdpSocket};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{Sender, UnboundedReceiver, unbounded_channel};
 
@@ -118,7 +119,7 @@ impl NetworkClient {
 
     #[func]
     pub fn send_input(&self, id: u32, action_code: u32) {
-        godot_print!("SENDING INPUT");
+        godot_print!("SENDING INPUT {id} {action_code}");
         let socket = self.socket.clone();
         let input = common::packet::PlayerInput {
             id: id,
@@ -135,5 +136,22 @@ impl NetworkClient {
         self.runtime.spawn(async move {
             let _ = socket.unwrap().send(&input_bytes).await;
         });
+    }
+
+    pub async fn send_handshake() -> Result<u32, std::io::Error> {
+        let mut stream = TcpStream::connect("127.0.0.1:8081").await?;
+
+        godot_print!("hewo");
+        let request = b"HELLO_UWU";
+        stream.write_all(request).await?;
+
+        godot_print!("hewo_poslah");
+        let mut buffer = [0u8; 4];
+        stream.read_exact(&mut buffer).await?;
+
+        godot_print!("hewo_pwocitah");
+        let player_id = u32::from_be_bytes(buffer);
+        godot_print!("{player_id}");
+        Ok(player_id)
     }
 }

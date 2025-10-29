@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use common::game_world::GameWorld;
-use godot::{classes::CharacterBody2D, prelude::*};
+use godot::prelude::*;
 
 use crate::{
     bullet::BulletNode, game_world::GameWorldWrapper, net::NetworkClient, player::PlayerWrapper,
@@ -14,8 +14,11 @@ pub struct World {
     players: HashMap<u32, Gd<PlayerWrapper>>,
     bullets: HashMap<u32, Gd<BulletNode>>,
     last_snapshot: GameWorld,
+
     network_client: Option<Gd<NetworkClient>>,
     player_scene: Gd<PackedScene>,
+    player_id: Option<u32>,
+
     #[export]
     network_path: NodePath,
 }
@@ -34,6 +37,7 @@ impl INode2D for World {
                 width: 800.0,
                 height: 800.0,
             },
+            player_id: None,
             player_scene: load("res://player.tscn"),
             network_client: None,
             network_path: NodePath::from("NetworkClient"),
@@ -44,6 +48,7 @@ impl INode2D for World {
 
     fn ready(&mut self) {
         let node = self.base().get_node_as::<NetworkClient>(&self.network_path);
+
         if let client = node {
             godot_print!("Subscribing player to network...");
             client
@@ -52,15 +57,29 @@ impl INode2D for World {
                 .connect_other(self, |this, _world| {
                     this.on_snapshot_update(_world);
                 });
-            godot_print!("Creating player's client...");
-            self.network_client = Some(client.clone());
-            godot_print!("Player connected to NetworkClient node");
 
-            let mut local_player = self.player_scene.instantiate_as::<PlayerWrapper>();
-            local_player.bind_mut().set_id(0);
-            local_player.bind_mut().set_client_network(client.clone());
-            self.base_mut().add_child(&local_player.clone().upcast::<Node>());
-            self.players.insert(0, local_player);
+            self.network_client = Some(client.clone());
+            let c = client.clone();
+            godot_print!("Creating player's client...");
+            let rt = tokio::runtime::Runtime::new().expect("err");
+            match rt.block_on(NetworkClient::send_handshake()) {
+                Ok(id) => {
+                    self.player_id = Some(id);
+
+                    // local player spawn
+                    let mut local_player = self.player_scene.instantiate_as::<PlayerWrapper>();
+                    local_player.bind_mut().set_id(id);
+                    local_player.bind_mut().set_client_network(c);
+                    self.base_mut()
+                        .add_child(&local_player.clone().upcast::<Node>());
+
+                    godot_print!("{id}");
+
+                    self.players.insert(id, local_player);
+                    godot_print!("Player connected to NetworkClient node");
+                }
+                _ => {}
+            }
         } else {
             godot_error!("Could not find NetworkClient node");
         }
@@ -70,9 +89,7 @@ impl INode2D for World {
 #[godot_api]
 impl World {
     pub fn on_snapshot_update(&mut self, world_wrapper: Gd<GameWorldWrapper>) {
-        // self.last_snapshot = world_wrapper.bind().game_world.clone();
         let world = world_wrapper.bind().game_world.clone();
-        godot_print!("{:?}", world);
 
         // Setup players
         for (id, player_data) in world.unwrap().players {
@@ -80,8 +97,15 @@ impl World {
                 player.bind_mut().update_position(Vector3 {
                     x: player_data.x,
                     y: player_data.y,
-                    z: player_data.rotation
+                    z: player_data.rotation,
                 });
+            } else {
+                godot_print!("new player");
+                let mut player = self.player_scene.instantiate_as::<PlayerWrapper>();
+                player.bind_mut().set_id(id);
+                self.base_mut()
+                    .add_child(&player.clone().upcast::<Node>());
+                self.players.insert(id, player);
             }
         }
 
