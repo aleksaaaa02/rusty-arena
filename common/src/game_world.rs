@@ -1,5 +1,8 @@
 use bincode::{Decode, Encode};
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, binary_heap::Drain},
+    time::{Duration, Instant},
+};
 
 use crate::packet::PlayerInput;
 
@@ -10,6 +13,7 @@ pub struct GameWorld {
     pub asteroids: Vec<Asteroid>,
     pub width: f32,
     pub height: f32,
+    pub bullet_id_counter: u32,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -21,6 +25,8 @@ pub struct Player {
     pub vx: f32,
     pub vy: f32,
     pub hp: u16,
+    pub last_shot_ms: u64,
+    pub fire_rate_ms: u64,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -52,6 +58,7 @@ impl GameWorld {
             asteroids: Vec::new(),
             width: 800.0f32,
             height: 800.0f32,
+            bullet_id_counter: 0,
         }
     }
 
@@ -61,7 +68,7 @@ impl GameWorld {
         self.bullets.iter_mut().for_each(|b| {
             b.x += b.vx;
             b.y += b.vy;
-            b.distance_traveled += (b.vx * 0.16).hypot(b.vy * 0.016);
+            b.distance_traveled += (b.vx).hypot(b.vy);
         });
 
         self.bullets
@@ -102,18 +109,24 @@ impl GameWorld {
                     player.rotation += 0.1;
                 }
                 crate::packet::InputAction::Shoot => {
-                    let speed = 500.0;
-                    let bullet = Bullet {
-                        id: 0,
-                        owner_id: player.id,
-                        x: player.x,
-                        y: player.y,
-                        vx: speed * player.rotation.cos(),
-                        vy: speed * player.rotation.sin(),
-                        distance_traveled: 0.0,
-                    };
+                    let now = GameWorld::current_time_ms();
+                    if now >= player.fire_rate_ms + player.last_shot_ms {
+                        player.last_shot_ms = now;
+                        let speed = 20.0;
+                        let id = self.bullet_id_counter;
+                        self.bullet_id_counter += 1;
+                        let bullet = Bullet {
+                            id,
+                            owner_id: player.id,
+                            x: player.x,
+                            y: player.y,
+                            vx: speed * player.rotation.cos(),
+                            vy: speed * player.rotation.sin(),
+                            distance_traveled: 0.0,
+                        };
 
-                    self.bullets.push(bullet);
+                        self.bullets.push(bullet);
+                    }
                 }
                 crate::packet::InputAction::Thrust => {
                     let force = 2.0;
@@ -138,7 +151,17 @@ impl GameWorld {
                 vx: 0.0,
                 vy: 0.0,
                 hp: 100,
+                last_shot_ms: 0,
+                fire_rate_ms: 100,
             },
         );
+    }
+
+    fn current_time_ms() -> u64 {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("Time went backwards");
+
+        now.as_millis() as u64
     }
 }

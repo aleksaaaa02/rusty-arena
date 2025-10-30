@@ -128,14 +128,9 @@ async fn game_loop(
         }
 
         while let Ok((addr, input)) = input_rx.try_recv() {
-            // if let Some(&player_id) = addr_to_id.get(&addr) {
             let id = input.id;
             world.apply_input(id, &input);
-            // addr_to_id.insert(addr, player_id);
             println!("{:?}", input);
-            // } else {
-            //     eprintln!("unknown addres: {}", addr)
-            // }
         }
 
         let _ = snapshot_tx.send(world.clone()).await;

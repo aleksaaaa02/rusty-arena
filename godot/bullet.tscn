@@ -2,7 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://dbyawvqhmter4" path="res://icon.svg" id="1_v7oki"]
 
-[node name="Bullet" type="Node2D"]
+[node name="Bullet" type="BulletNode"]
 scale = Vector2(0.2, 0.2)
 
 [node name="Sprite2D" type="Sprite2D" parent="."]

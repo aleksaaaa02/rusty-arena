@@ -32,6 +32,8 @@ impl ICharacterBody2D for PlayerWrapper {
                 vy: 0.0,
                 x: 0.0,
                 y: 0.0,
+                fire_rate_ms: 0,
+                last_shot_ms: 0
             },
         }
     }
@@ -78,6 +80,13 @@ impl ICharacterBody2D for PlayerWrapper {
             if let Some(client) = &self.network_client {
                 godot_print!("Goind forward");
                 client.bind().send_input(self.id, 3);
+            }
+        }
+
+        if input.is_action_pressed("ui_select") {
+            if let Some(client) = &self.network_client {
+                godot_print!("Pow pow");
+                client.bind().send_input(self.id, 4);
             }
         }
     }
