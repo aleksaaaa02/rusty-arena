@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://sxkkeht6pspq"]
 
-[ext_resource type="Texture2D" uid="uid://dbyawvqhmter4" path="res://icon.svg" id="1_4flbx"]
+[ext_resource type="Texture2D" uid="uid://tcslgmv7kiqu" path="res://ship.png" id="1_4flbx"]
 
 [node name="Player" type="PlayerWrapper"]
 up_direction = Vector2(0.8165377, -0.5772922)

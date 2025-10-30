@@ -1,9 +1,11 @@
 [gd_scene load_steps=2 format=3 uid="uid://bkgh58efolgwa"]
 
-[ext_resource type="Texture2D" uid="uid://dbyawvqhmter4" path="res://icon.svg" id="1_v7oki"]
+[ext_resource type="Texture2D" uid="uid://c7r8pcaip5av2" path="res://bullet.png" id="1_v7oki"]
 
 [node name="Bullet" type="BulletNode"]
 scale = Vector2(0.2, 0.2)
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+modulate = Color(0, 5.3174357, 1.1586784, 1)
+scale = Vector2(1.28125, 1.28125)
 texture = ExtResource("1_v7oki")
