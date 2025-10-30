@@ -1,14 +1,11 @@
-use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet},
-    rc::Rc,
-};
+use std::collections::{HashMap, HashSet};
 
 use common::game_world::GameWorld;
 use godot::prelude::*;
 
 use crate::{
-    bullet::BulletNode, game_world::GameWorldWrapper, net::NetworkClient, player::PlayerWrapper, ui_layer::UiLayer,
+    asteroids::AsteroidWrapper, bullet::BulletNode, game_world::GameWorldWrapper,
+    net::NetworkClient, player::PlayerWrapper, ui_layer::UiLayer,
 };
 
 #[derive(GodotClass)]
@@ -17,12 +14,14 @@ pub struct World {
     base: Base<Node2D>,
     players: HashMap<u32, Gd<PlayerWrapper>>,
     bullets: HashMap<u32, Gd<BulletNode>>,
+    asteroids: HashMap<u32, Gd<AsteroidWrapper>>,
     last_snapshot: GameWorld,
 
     network_client: Option<Gd<NetworkClient>>,
-    player_scene: Gd<PackedScene>,
     player_id: Option<u32>,
-
+    
+    player_scene: Gd<PackedScene>,
+    asteroid_scene: Gd<PackedScene>,
     bullet_scene: Gd<PackedScene>,
 
     #[export]
@@ -36,6 +35,7 @@ impl INode2D for World {
             base,
             players: HashMap::new(),
             bullets: HashMap::new(),
+            asteroids: HashMap::new(),
             last_snapshot: GameWorld {
                 players: HashMap::new(),
                 bullets: Vec::new(),
@@ -43,10 +43,13 @@ impl INode2D for World {
                 width: 800.0,
                 height: 800.0,
                 bullet_id_counter: 0,
+                asteroid_id_counter: 0,
+                last_spawn_asteroid: 0,
             },
             player_id: None,
             player_scene: load("res://player.tscn"),
             bullet_scene: load("res://bullet.tscn"),
+            asteroid_scene: load("res://asteroid.tscn"),
             network_client: None,
             network_path: NodePath::from("NetworkClient"),
         }
@@ -85,7 +88,7 @@ impl INode2D for World {
                     if let mut ui_node = self.base().get_node_as::<UiLayer>("../UI") {
                         ui_node.bind_mut().connect_to_player(&local_player);
                     }
-                        // Connect to UI - Health -> ovo treba srediti
+                    // Connect to UI - Health -> ovo treba srediti
 
                     self.players.insert(id, local_player);
                     godot_print!("Player connected to NetworkClient node");
@@ -154,7 +157,10 @@ impl World {
                 godot_print!("new bullet");
                 let mut new_bullet = self.bullet_scene.instantiate_as::<BulletNode>();
 
-                new_bullet.bind_mut().update_position(Vector2 { x: bullet_data.x, y: bullet_data.y });
+                new_bullet.bind_mut().update_position(Vector2 {
+                    x: bullet_data.x,
+                    y: bullet_data.y,
+                });
                 new_bullet.bind_mut().set_id(bullet_data.id);
                 self.base_mut()
                     .add_child(&new_bullet.clone().upcast::<Node>());
@@ -164,5 +170,47 @@ impl World {
         }
 
         // Setup items / asteroids, EVERYTHING IN WORLD
+        let server_asteroids_ids: HashSet<u32> = world
+            .clone()
+            .unwrap()
+            .asteroids
+            .iter()
+            .map(|b| b.id)
+            .collect();
+
+        let asteroids_to_remove: Vec<u32> = self
+            .asteroids
+            .keys()
+            .filter(|id| !server_asteroids_ids.contains(id))
+            .cloned()
+            .collect();
+
+        for id in asteroids_to_remove {
+            if let Some(asteroid) = self.asteroids.remove(&id) {
+                self.base_mut()
+                    .remove_child(&asteroid.clone().upcast::<Node>());
+            }
+        }
+
+        for asteroid_data in world.clone().unwrap().asteroids {
+            if let Some(asteroid) = self.asteroids.get_mut(&asteroid_data.id) {
+                asteroid
+                    .bind_mut()
+                    .update_position(asteroid_data.x, asteroid_data.y);
+            } else {
+                godot_print!("new asteroid");
+                let mut asteroid_node = self.asteroid_scene.instantiate_as::<AsteroidWrapper>();
+
+                asteroid_node
+                    .bind_mut()
+                    .update_position(asteroid_data.x, asteroid_data.y);
+
+                asteroid_node.bind_mut().set_id(asteroid_data.id);
+                self.base_mut()
+                    .add_child(&asteroid_node.clone().upcast::<Node>());
+
+                self.asteroids.insert(asteroid_data.id, asteroid_node);
+            }
+        }
     }
 }

@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3 uid="uid://ds40lq11i434"]
+
+[ext_resource type="Texture2D" uid="uid://cw3scddy1qtqo" path="res://asteroid.png" id="1_u87q6"]
+
+[node name="AsteroidWrapper" type="AsteroidWrapper"]
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+modulate = Color(0.67058825, 0.65882355, 1, 1)
+self_modulate = Color(2.1074393, 2.1074393, 2.1074393, 1)
+position = Vector2(1, 0)
+scale = Vector2(1.6718749, 1.6093749)
+texture = ExtResource("1_u87q6")

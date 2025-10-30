@@ -30,7 +30,6 @@ impl ICanvasLayer for UiLayer {
 #[godot_api]
 impl UiLayer {
     pub fn connect_to_player(&mut self, player: &Gd<PlayerWrapper>) {
-        godot_print!("OVER HERE HEALTH");
         player
             .signals()
             .health_updated()
@@ -41,7 +40,6 @@ impl UiLayer {
 
     #[func]
     fn on_hp_changed(&mut self, new_hp: u16) {
-        godot_print!("health_changed");
         if let Some(label) = &mut self.hp_label {
             label.set_text(&format!("HP: {}", new_hp));
         }
