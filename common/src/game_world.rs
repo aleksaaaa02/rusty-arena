@@ -71,6 +71,7 @@ impl GameWorld {
     }
 
     pub fn update(&mut self) {
+        // Update Bullets in world
         let bullet_max_distance = 1000.0;
 
         self.bullets.iter_mut().for_each(|b| {
@@ -82,7 +83,7 @@ impl GameWorld {
         self.bullets
             .retain(|b| b.distance_traveled < bullet_max_distance);
 
-        // here we should update the world per tick
+        // Update players
         for player in self.players.values_mut() {
             player.x += player.vx;
             player.y += player.vy;
@@ -94,6 +95,44 @@ impl GameWorld {
             player.vx *= 0.9;
             player.vy *= 0.9;
         }
+
+        // Check for collision
+        let mut bullets_to_remove = Vec::new();
+        let mut players_hit = Vec::new();
+
+        for bullet in &self.bullets {
+            for player in self.players.values_mut() {
+                if bullet.owner_id == player.id {
+                    continue;
+                }
+
+                let dx = bullet.x - player.x;
+                let dy = bullet.y - player.y;
+                let dist_sq = dx * dx + dy * dy;
+                let collision_radius = 20.0;
+                if dist_sq < collision_radius * collision_radius {
+                    player.hp = player.hp.saturating_sub(20);
+                    bullets_to_remove.push(bullet.id);
+                    players_hit.push(player.id);
+                }
+            }
+        }
+
+        self.bullets.retain(|b| !bullets_to_remove.contains(&b.id));
+
+        for id in players_hit {
+            if let Some(player) = self.players.get_mut(&id) {
+                if player.hp == 0 {
+                    player.x = 0.0;
+                    player.y = 0.0;
+                    player.vx = 0.0;
+                    player.vy = 0.0;
+                    player.hp = 100;
+                }
+            }
+        }
+
+        // Kill / Respawn
     }
 
     pub fn apply_input(&mut self, player_id: u32, input: &PlayerInput) {

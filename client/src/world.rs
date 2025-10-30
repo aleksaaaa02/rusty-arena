@@ -8,7 +8,7 @@ use common::game_world::GameWorld;
 use godot::prelude::*;
 
 use crate::{
-    bullet::BulletNode, game_world::GameWorldWrapper, net::NetworkClient, player::PlayerWrapper,
+    bullet::BulletNode, game_world::GameWorldWrapper, net::NetworkClient, player::PlayerWrapper, ui_layer::UiLayer,
 };
 
 #[derive(GodotClass)]
@@ -82,7 +82,10 @@ impl INode2D for World {
                     self.base_mut()
                         .add_child(&local_player.clone().upcast::<Node>());
 
-                    godot_print!("{id}");
+                    if let mut ui_node = self.base().get_node_as::<UiLayer>("../UI") {
+                        ui_node.bind_mut().connect_to_player(&local_player);
+                    }
+                        // Connect to UI - Health -> ovo treba srediti
 
                     self.players.insert(id, local_player);
                     godot_print!("Player connected to NetworkClient node");
@@ -108,6 +111,7 @@ impl World {
                     y: player_data.y,
                     z: player_data.rotation,
                 });
+                player.bind_mut().update_health(player_data.hp);
             } else {
                 godot_print!("new player");
                 let mut player = self.player_scene.instantiate_as::<PlayerWrapper>();

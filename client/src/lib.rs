@@ -11,3 +11,4 @@ pub mod game_world;
 pub mod bullet;
 pub mod world;
 pub mod camera;
+pub mod ui_layer;

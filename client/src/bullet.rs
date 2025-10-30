@@ -22,9 +22,7 @@ impl INode2D for BulletNode {
         }
     }
 
-    fn ready(&mut self) {
-        godot_print!("BulletNode ready, id = {}", self.id);
-    }
+    fn ready(&mut self) {}
 
     fn process(&mut self, delta: f64) {
         let new_position = Vector2 {

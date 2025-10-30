@@ -95,10 +95,19 @@ impl ICharacterBody2D for PlayerWrapper {
 
 #[godot_api]
 impl PlayerWrapper {
+
+    #[signal]
+    pub fn health_updated(current_hp: u16);
+
     pub fn update_position(&mut self, new_position: Vector3) {
         self.data.x = new_position.x;
         self.data.y = new_position.y;
         self.data.rotation = new_position.z;
+    }
+
+    pub fn update_health(&mut self, hp: u16) {
+        self.data.hp = hp;
+        self.base_mut().emit_signal("health_updated", &[Variant::from(hp)]);
     }
 
     pub fn set_id(&mut self, id: u32) {
@@ -111,7 +120,7 @@ impl PlayerWrapper {
     }
 
     pub fn spawn_camera(&mut self) {
-        let mut cam = CameraNode::new_alloc();
+        let cam = CameraNode::new_alloc();
         self.base_mut().add_child(&cam.clone().upcast::<CameraNode>());
     }     
 }
