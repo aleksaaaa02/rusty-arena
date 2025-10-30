@@ -78,6 +78,7 @@ impl INode2D for World {
                     let mut local_player = self.player_scene.instantiate_as::<PlayerWrapper>();
                     local_player.bind_mut().set_id(id);
                     local_player.bind_mut().set_client_network(c);
+                    local_player.bind_mut().spawn_camera();
                     self.base_mut()
                         .add_child(&local_player.clone().upcast::<Node>());
 
@@ -148,9 +149,12 @@ impl World {
             } else {
                 godot_print!("new bullet");
                 let mut new_bullet = self.bullet_scene.instantiate_as::<BulletNode>();
+
+                new_bullet.bind_mut().update_position(Vector2 { x: bullet_data.x, y: bullet_data.y });
                 new_bullet.bind_mut().set_id(bullet_data.id);
                 self.base_mut()
                     .add_child(&new_bullet.clone().upcast::<Node>());
+
                 self.bullets.insert(bullet_data.id, new_bullet);
             }
         }

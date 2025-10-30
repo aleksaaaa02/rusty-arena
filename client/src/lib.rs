@@ -10,3 +10,4 @@ pub mod net;
 pub mod game_world;
 pub mod bullet;
 pub mod world;
+pub mod camera;

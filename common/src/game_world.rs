@@ -7,6 +7,14 @@ use std::{
 use crate::packet::PlayerInput;
 
 #[derive(Encode, Decode, Debug, Clone)]
+pub struct Bounds {
+    pub west: f32,
+    pub east: f32,
+    pub north: f32,
+    pub south: f32,
+}
+
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct GameWorld {
     pub players: HashMap<u32, Player>,
     pub bullets: Vec<Bullet>,
@@ -56,8 +64,8 @@ impl GameWorld {
             players: HashMap::new(),
             bullets: Vec::new(),
             asteroids: Vec::new(),
-            width: 800.0f32,
-            height: 800.0f32,
+            width: 1600.0,
+            height: 1200.0,
             bullet_id_counter: 0,
         }
     }
@@ -79,19 +87,8 @@ impl GameWorld {
             player.x += player.vx;
             player.y += player.vy;
 
-            // Optional: wrap around the world boundaries
-            if player.x < 0.0 {
-                player.x += self.width;
-            }
-            if player.x > self.width {
-                player.x -= self.width;
-            }
-            if player.y < 0.0 {
-                player.y += self.height;
-            }
-            if player.y > self.height {
-                player.y -= self.height;
-            }
+            player.x = player.x.clamp(-800.0, 800.0);
+            player.y = player.y.clamp(-600.0, 600.0);
 
             // Friction / damping to slow down
             player.vx *= 0.9;

@@ -1,6 +1,6 @@
 use bincode::config;
 use common::{game_world::GameWorld, packet::PlayerInput};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::atomic::AtomicU32;
 use std::{io, sync::Arc};
@@ -21,7 +21,7 @@ async fn main() -> io::Result<()> {
 
     let (input_tx, input_rx) = mpsc::channel::<(SocketAddr, PlayerInput)>(1024);
     let (snapshot_tx, mut snapshot_rx) = mpsc::channel::<GameWorld>(1024);
-    let (input_tcp_tx, mut input_tcp_rx) = mpsc::channel::<(SocketAddr, u32)>(128);
+    let (input_tcp_tx, input_tcp_rx) = mpsc::channel::<(SocketAddr, u32)>(128);
 
     let clients = Arc::new(Mutex::new(HashSet::<SocketAddr>::new()));
     let id_counter = Arc::new(AtomicU32::new(0));
@@ -127,7 +127,7 @@ async fn game_loop(
             world.add_player(player_id);
         }
 
-        while let Ok((addr, input)) = input_rx.try_recv() {
+        while let Ok((_addr, input)) = input_rx.try_recv() {
             let id = input.id;
             world.apply_input(id, &input);
             println!("{:?}", input);

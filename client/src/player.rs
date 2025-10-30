@@ -1,3 +1,4 @@
+use crate::camera::CameraNode;
 use crate::net::NetworkClient;
 use godot::classes::{CharacterBody2D, ICharacterBody2D, Input};
 use godot::prelude::*;
@@ -108,4 +109,9 @@ impl PlayerWrapper {
     pub fn set_client_network(&mut self, network_client :Gd<NetworkClient>){
         self.network_client = Some(network_client);
     }
+
+    pub fn spawn_camera(&mut self) {
+        let mut cam = CameraNode::new_alloc();
+        self.base_mut().add_child(&cam.clone().upcast::<CameraNode>());
+    }     
 }
