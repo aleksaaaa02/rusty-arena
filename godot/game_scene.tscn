@@ -1,45 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://fjql0s61n1fo"]
-
-[ext_resource type="Script" uid="uid://btehep87etlv3" path="res://scripts/network_client.gd" id="1_5w4vv"]
+[gd_scene format=3 uid="uid://fjql0s61n1fo"]
 
 [node name="Game" type="Node2D"]
-position = Vector2(-2, 0)
-script = ExtResource("1_5w4vv")
-metadata/_edit_lock_ = true
-
-[node name="NetworkClient" type="NetworkClient" parent="."]
 
 [node name="World" type="World" parent="."]
-network_path = NodePath("../NetworkClient")
-_import_path = NodePath("")
-unique_name_in_owner = false
-process_mode = 0
-process_priority = 0
-process_physics_priority = 0
-process_thread_group = 0
-physics_interpolation_mode = 0
-auto_translate_mode = 0
-editor_description = ""
-visible = true
-modulate = Color(1, 1, 1, 1)
-self_modulate = Color(1, 1, 1, 1)
-show_behind_parent = false
-top_level = false
-clip_children = 0
-light_mask = 1
-visibility_layer = 1
-z_index = 0
-z_as_relative = true
-y_sort_enabled = false
-texture_filter = 0
-texture_repeat = 0
-material = null
-use_parent_material = false
-position = Vector2(0, 0)
-rotation = 0.0
-scale = Vector2(1, 1)
-skew = 0.0
-script = null
 
 [node name="UI" type="UiLayer" parent="."]
 

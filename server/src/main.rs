@@ -9,7 +9,6 @@ use tokio::net::{TcpListener, UdpSocket};
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
-
 const TICK_DURATION: u64 = 16;
 
 #[tokio::main]
