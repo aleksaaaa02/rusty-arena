@@ -1,8 +1,7 @@
 use bincode::{Decode, Encode};
-use rand::Rng;
 use std::collections::{HashMap, HashSet};
 
-use crate::packet::PlayerInput;
+use crate::{asteroid::Asteroid, bullet::Bullet, packet::PlayerInput, player::Player, utils::current_time_ms};
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct Bounds {
@@ -24,40 +23,6 @@ pub struct GameWorld {
     pub last_spawn_asteroid: u64,
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
-pub struct Player {
-    pub id: u32,
-    pub x: f32,
-    pub y: f32,
-    pub rotation: f32,
-    pub vx: f32,
-    pub vy: f32,
-    pub hp: u16,
-    pub last_shot_ms: u64,
-    pub fire_rate_ms: u64,
-}
-
-#[derive(Encode, Decode, Debug, Clone)]
-pub struct Bullet {
-    pub id: u32,
-    pub owner_id: u32,
-    pub x: f32,
-    pub y: f32,
-    pub vx: f32,
-    pub vy: f32,
-    pub distance_traveled: f32,
-}
-
-#[derive(Encode, Decode, Debug, Clone)]
-pub struct Asteroid {
-    pub id: u32,
-    pub x: f32,
-    pub y: f32,
-    pub vx: f32,
-    pub vy: f32,
-    pub radius: f32,
-    pub distance_travaled: f32,
-}
 
 impl GameWorld {
     pub fn new() -> Self {
@@ -74,42 +39,27 @@ impl GameWorld {
     }
 
     pub fn update(&mut self) {
+        let now = current_time_ms();
+
         // Update Bullets in world
         let bullet_max_distance = 1000.0;
         let asteroids_max_distance: f32 = 1000.0;
-        let asteroid_speed = 1.5;
 
-        self.bullets.iter_mut().for_each(|b| {
-            b.x += b.vx;
-            b.y += b.vy;
-            b.distance_traveled += (b.vx).hypot(b.vy);
-        });
+        // update entities
+
+        self.bullets.iter_mut().for_each(|b| b.update_position());
 
         self.bullets
             .retain(|b| b.distance_traveled < bullet_max_distance);
 
-        self.asteroids.iter_mut().for_each(|a| {
-            a.x += a.vx * asteroid_speed;
-            a.y += a.vy * asteroid_speed;
-
-            a.distance_travaled += (a.vx).hypot(a.vy);
-        });
+        self.asteroids.iter_mut().for_each(|a| a.update_position());
 
         self.asteroids
-            .retain(|a| a.distance_travaled < asteroids_max_distance);
+            .retain(|a| a.distance_traveled < asteroids_max_distance);
 
-        // Update players
-        for player in self.players.values_mut() {
-            player.x += player.vx;
-            player.y += player.vy;
-
-            player.x = player.x.clamp(-800.0, 800.0);
-            player.y = player.y.clamp(-600.0, 600.0);
-
-            // Friction / damping to slow down
-            player.vx *= 0.9;
-            player.vy *= 0.9;
-        }
+        self.players
+            .iter_mut()
+            .for_each(|(_, player)| player.update_player_position());
 
         // Check for collision
         let mut bullets_to_remove = HashSet::new();
@@ -160,7 +110,8 @@ impl GameWorld {
         }
 
         self.bullets.retain(|b| !bullets_to_remove.contains(&b.id));
-        self.asteroids.retain(|b| !asteroids_to_remove.contains(&b.id));
+        self.asteroids
+            .retain(|b| !asteroids_to_remove.contains(&b.id));
 
         // Kill / Respawn
         for id in players_hit {
@@ -175,21 +126,11 @@ impl GameWorld {
             }
         }
 
-        let now = GameWorld::current_time_ms();
+        // spawn asteroids
         if now - self.last_spawn_asteroid > 1000 {
-            println!("woosh");
-            let (pos, dir) = GameWorld::spawn_asteroid();
             let id = self.asteroid_id_counter;
             self.asteroid_id_counter += 1;
-            self.asteroids.push(Asteroid {
-                id: id,
-                x: pos.0,
-                y: pos.1,
-                vx: dir.0,
-                vy: dir.1,
-                radius: 1.0,
-                distance_travaled: 0.0,
-            });
+            self.asteroids.push(Asteroid::new(id));
             self.last_spawn_asteroid = now;
         }
     }
@@ -204,7 +145,7 @@ impl GameWorld {
                     player.rotation += 0.05;
                 }
                 crate::packet::InputAction::Shoot => {
-                    let now = GameWorld::current_time_ms();
+                    let now = current_time_ms();
                     if now >= player.fire_rate_ms + player.last_shot_ms {
                         player.last_shot_ms = now;
                         let speed = 20.0;
@@ -227,8 +168,11 @@ impl GameWorld {
                     let force = 1.0;
                     player.vx += force * player.rotation.cos();
                     player.vy += force * player.rotation.sin();
+                },
+                crate::packet::InputAction::Hello => {
+                    // initial handshake so screen don't freeze on gamge init
+                    // just letting server know that it should broadcast it's state to new player
                 }
-                _ => {}
             }
         } else {
             eprintln!("Entity with id: {player_id} not found!")
@@ -238,48 +182,7 @@ impl GameWorld {
     pub fn add_player(&mut self, player_id: u32) {
         self.players.insert(
             player_id,
-            Player {
-                id: player_id,
-                x: 0.0,
-                y: 0.0,
-                rotation: 0.0,
-                vx: 0.0,
-                vy: 0.0,
-                hp: 100,
-                last_shot_ms: 0,
-                fire_rate_ms: 100,
-            },
+            Player::new(player_id)
         );
-    }
-
-    fn spawn_asteroid() -> ((f32, f32), (f32, f32)) {
-        let mut rng = rand::rng();
-        let margin = 50.0;
-        let side = rng.random_range(0..=3);
-        let spawn_pos = match side {
-            0 => (rng.random_range(-800.0..800.0), 600.0 + margin), // top
-            1 => (rng.random_range(-800.0..800.0), -600.0 - margin), // bottom
-            2 => (-800.0 - margin, rng.random_range(-600.0..600.0)), // left
-            3 => (800.0 + margin, rng.random_range(-600.0..600.0)), // right
-            _ => (0.0, 0.0),
-        };
-
-        let players = vec![(0.0, 0.0), (100.0, 50.0), (-200.0, -100.0)];
-        let target_player = players[rng.random_range(0..players.len())];
-
-        let dx = target_player.0 - spawn_pos.0;
-        let dy = target_player.1 - spawn_pos.1;
-        let distance: f32 = ((dx * dx + dy * dy) as f32).sqrt();
-        let direction = (dx / distance, dy / distance);
-
-        (spawn_pos, direction)
-    }
-
-    fn current_time_ms() -> u64 {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("Time went backwards");
-
-        now.as_millis() as u64
     }
 }

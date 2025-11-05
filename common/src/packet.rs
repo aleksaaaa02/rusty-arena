@@ -7,6 +7,7 @@ pub enum InputAction {
     RotateRight,
     Shoot,
     Thrust,
+    Hello,
 }
 
 #[derive(Encode, Decode, Clone, Debug)]

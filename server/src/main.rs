@@ -8,7 +8,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, UdpSocket};
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::time::Instant;
+
 
 const TICK_DURATION: u64 = 16;
 
@@ -116,11 +116,12 @@ async fn game_loop(
     snapshot_tx: Sender<GameWorld>,
 ) {
     let tick_duration = std::time::Duration::from_millis(TICK_DURATION);
+    let mut interval = tokio::time::interval(tick_duration);
     let mut world = GameWorld::new();
     // let mut addr_to_id: HashMap<SocketAddr, u32> = HashMap::new();
 
     loop {
-        let start = Instant::now();
+        interval.tick().await;
 
         while let Ok((_, player_id)) = input_tcp.try_recv() {
             println!("new player");
@@ -136,10 +137,5 @@ async fn game_loop(
         let _ = snapshot_tx.send(world.clone()).await;
 
         world.update();
-
-        let elapsed = start.elapsed();
-        if elapsed < tick_duration {
-            tokio::time::sleep(tick_duration - elapsed).await;
-        }
     }
 }

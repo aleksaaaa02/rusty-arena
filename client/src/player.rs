@@ -1,5 +1,6 @@
 use crate::camera::CameraNode;
 use crate::net::NetworkClient;
+use common::player::Player;
 use godot::classes::{CharacterBody2D, ICharacterBody2D, Input};
 use godot::prelude::*;
 
@@ -11,7 +12,7 @@ pub struct PlayerWrapper {
     id: u32,
     #[export]
     network_path: NodePath,
-    data: common::game_world::Player,
+    data: Player,
     network_client: Option<Gd<NetworkClient>>,
 }
 
@@ -25,7 +26,7 @@ impl ICharacterBody2D for PlayerWrapper {
             id: 0,
             network_client: None,
             network_path: NodePath::from("NetworkClient"),
-            data: common::game_world::Player {
+            data: Player {
                 id: 0,
                 hp: 100,
                 rotation: 0.0,
