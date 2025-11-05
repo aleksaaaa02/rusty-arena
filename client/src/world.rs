@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use common::game_world::GameWorld;
-use godot::prelude::*;
+use godot::{classes::Engine, prelude::*};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::{
     asteroids::AsteroidWrapper, bullet::BulletNode, game_world::GameWorldWrapper,
@@ -16,16 +17,12 @@ pub struct World {
     bullets: HashMap<u32, Gd<BulletNode>>,
     asteroids: HashMap<u32, Gd<AsteroidWrapper>>,
     last_snapshot: GameWorld,
-
     network_client: Option<Gd<NetworkClient>>,
     player_id: Option<u32>,
-    
+    snapshot_rx: Option<UnboundedReceiver<GameWorld>>,
     player_scene: Gd<PackedScene>,
     asteroid_scene: Gd<PackedScene>,
     bullet_scene: Gd<PackedScene>,
-
-    #[export]
-    network_path: NodePath,
 }
 
 #[godot_api]
@@ -46,65 +43,76 @@ impl INode2D for World {
                 asteroid_id_counter: 0,
                 last_spawn_asteroid: 0,
             },
+            snapshot_rx: None,
+            network_client: None,
             player_id: None,
             player_scene: load("res://player.tscn"),
             bullet_scene: load("res://bullet.tscn"),
             asteroid_scene: load("res://asteroid.tscn"),
-            network_client: None,
-            network_path: NodePath::from("NetworkClient"),
         }
     }
 
-    fn process(&mut self, delta: f64) {}
+    fn process(&mut self, delta: f64) {
+        if let Some(rx) = &mut self.snapshot_rx {
+            let mut worlds = Vec::new();
+
+            while let Ok(world) = rx.try_recv() {
+                worlds.push(world);
+            }
+            
+            // self.snapshot_rx = Some(rx);
+            
+            for world in worlds {
+                let world_wrapped = GameWorldWrapper::from_game_world(world);
+                // godot_print!("Render...");
+                self.on_snapshot_update(world_wrapped);
+            }
+        }
+    }
 
     fn ready(&mut self) {
-        let node = self.base().get_node_as::<NetworkClient>(&self.network_path);
-
-        if let client = node {
-            godot_print!("Subscribing player to network...");
-            client
-                .signals()
-                .new_snapshot()
-                .connect_other(self, |this, _world| {
-                    this.on_snapshot_update(_world);
-                });
-
-            self.network_client = Some(client.clone());
-            let c = client.clone();
-            godot_print!("Creating player's client...");
-            let rt = tokio::runtime::Runtime::new().expect("err");
-            match rt.block_on(NetworkClient::send_handshake()) {
-                Ok(id) => {
-                    self.player_id = Some(id);
-
-                    // local player spawn
-                    let mut local_player = self.player_scene.instantiate_as::<PlayerWrapper>();
-                    local_player.bind_mut().set_id(id);
-                    local_player.bind_mut().set_client_network(c);
-                    local_player.bind_mut().spawn_camera();
-                    self.base_mut()
-                        .add_child(&local_player.clone().upcast::<Node>());
-
-                    if let mut ui_node = self.base().get_node_as::<UiLayer>("../UI") {
-                        ui_node.bind_mut().connect_to_player(&local_player);
-                    }
-                    // Connect to UI - Health -> ovo treba srediti
-
-                    self.players.insert(id, local_player);
-                    godot_print!("Player connected to NetworkClient node");
-                }
-                _ => {}
+        let mut client = match Engine::singleton().get_singleton("NetworkClient") {
+            None => {
+                godot_error!("Failed to get singleton");
+                return;
             }
-        } else {
-            godot_error!("Could not find NetworkClient node");
+            Some(s) => s.try_cast::<NetworkClient>().expect("OVDE SMO PUKLI"),
+        };
+
+        godot_print!("Creating player's client...");
+
+        let handle = client.bind().runtime.as_ref().unwrap().handle().clone();
+        match handle.block_on(client.bind_mut().send_handshake()) {
+            Ok(id) => {
+                self.player_id = Some(id);
+
+                // local player spawn
+                let mut local_player = self.player_scene.instantiate_as::<PlayerWrapper>();
+                local_player.bind_mut().set_id(id);
+                local_player.bind_mut().spawn_camera();
+                self.base_mut()
+                    .add_child(&local_player.clone().upcast::<Node>());
+
+                if let mut ui_node = self.base().get_node_as::<UiLayer>("../UI") {
+                    ui_node.bind_mut().connect_to_player(local_player.clone());
+                }
+                self.players.insert(id, local_player);
+
+                godot_print!("Player connected to NetworkClient node");
+            }
+            _ => {}
         }
+        client.bind_mut().connect_to_server();
+        self.snapshot_rx = client.bind_mut().start_listening();
+        client.bind().send_input(5);
+        self.network_client = Some(client);
     }
 }
 
 #[godot_api]
 impl World {
 
-    #[func]
+    // #[func]
     pub fn on_snapshot_update(&mut self, world_wrapper: Gd<GameWorldWrapper>) {
         let world = world_wrapper.bind().game_world.clone();
 
@@ -155,7 +163,6 @@ impl World {
                     y: bullet_data.y,
                 });
             } else {
-                godot_print!("new bullet");
                 let mut new_bullet = self.bullet_scene.instantiate_as::<BulletNode>();
 
                 new_bullet.bind_mut().update_position(Vector2 {
@@ -199,7 +206,6 @@ impl World {
                     .bind_mut()
                     .update_position(asteroid_data.x, asteroid_data.y);
             } else {
-                godot_print!("new asteroid");
                 let mut asteroid_node = self.asteroid_scene.instantiate_as::<AsteroidWrapper>();
 
                 asteroid_node

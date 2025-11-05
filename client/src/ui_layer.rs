@@ -29,7 +29,9 @@ impl ICanvasLayer for UiLayer {
 
 #[godot_api]
 impl UiLayer {
-    pub fn connect_to_player(&mut self, player: &Gd<PlayerWrapper>) {
+
+    #[func]
+    pub fn connect_to_player(&mut self, player: Gd<PlayerWrapper>) {
         player
             .signals()
             .health_updated()
