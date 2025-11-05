@@ -1,7 +1,10 @@
+// pub mod client;
+
 use common::game_world::GameWorld;
 use common::packet::PlayerInput;
-use godot::classes::{INode, Node};
+use godot::classes::{ConfigFile, INode, Node};
 use godot::prelude::*;
+use godot::global::Error;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
@@ -34,6 +37,18 @@ impl INode for NetworkClient {
             is_connected: false,
             snapshot_rx: None,
         }
+    }
+
+    fn ready(&mut self) {
+        let mut conf = ConfigFile::new_gd();
+        let err = conf.load("res://server.cfg");
+
+        if err == Error::OK {
+            self.server_addr = conf.get_value("GameServer", "address").to_string();
+        }
+        self.server_addr = String::from("127.0.0.0:8080");
+
+
     }
 
     fn process(&mut self, delta: f64) {
@@ -128,7 +143,8 @@ impl NetworkClient {
                 2 => common::packet::InputAction::RotateRight,
                 3 => common::packet::InputAction::Thrust,
                 4 => common::packet::InputAction::Shoot,
-                _ => common::packet::InputAction::Shoot,
+                5 => common::packet::InputAction::Hello,
+                _ => common::packet::InputAction::Hello
             },
         };
 

@@ -13,3 +13,5 @@ pub mod world;
 pub mod camera;
 pub mod ui_layer;
 pub mod asteroids;
+pub mod entry;
+pub mod main_menu;

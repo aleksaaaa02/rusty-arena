@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://e0mv5o8xiwqg"]
+
+[node name="MainMenu" type="MainMenuNode"]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Button" type="Button" parent="CanvasLayer"]
+offset_left = 520.0
+offset_top = 295.0
+offset_right = 637.0
+offset_bottom = 371.0
+text = "Start Game"
+
+[connection signal="pressed" from="CanvasLayer/Button" to="." method="new_game_pressed"]

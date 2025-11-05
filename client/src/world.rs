@@ -103,6 +103,8 @@ impl INode2D for World {
 
 #[godot_api]
 impl World {
+
+    #[func]
     pub fn on_snapshot_update(&mut self, world_wrapper: Gd<GameWorldWrapper>) {
         let world = world_wrapper.bind().game_world.clone();
 
@@ -124,7 +126,6 @@ impl World {
             }
         }
 
-        // Setup bullets
         let server_bullet_ids: HashSet<u32> = world
             .clone()
             .unwrap()
