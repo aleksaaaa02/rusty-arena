@@ -7,3 +7,15 @@ up_direction = Vector2(0.8165377, -0.5772922)
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("1_4flbx")
+
+[node name="ProgressBar" type="HealthBar" parent="."]
+modulate = Color(0, 1, 0, 1)
+self_modulate = Color(0, 1, 0, 1)
+offset_left = -44.0
+offset_top = -37.0
+offset_right = 46.0
+offset_bottom = -25.0
+value = 50.0
+show_percentage = false
+
+[connection signal="health_updated" from="." to="ProgressBar" method="on_health_updated"]
