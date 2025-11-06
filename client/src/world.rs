@@ -5,8 +5,12 @@ use godot::{classes::Engine, prelude::*};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::{
-    asteroids::AsteroidWrapper, bullet::BulletNode, game_world::GameWorldWrapper,
-    net::NetworkClient, player::PlayerWrapper, ui_layer::UiLayer,
+    asteroids::AsteroidWrapper,
+    bullet::BulletNode,
+    game_world::GameWorldWrapper,
+    net::{NetworkClient, async_runtime::AsyncRuntime},
+    player::PlayerWrapper,
+    ui_layer::UiLayer,
 };
 
 #[derive(GodotClass)]
@@ -59,9 +63,9 @@ impl INode2D for World {
             while let Ok(world) = rx.try_recv() {
                 worlds.push(world);
             }
-            
+
             // self.snapshot_rx = Some(rx);
-            
+
             for world in worlds {
                 let world_wrapped = GameWorldWrapper::from_game_world(world);
                 // godot_print!("Render...");
@@ -81,8 +85,8 @@ impl INode2D for World {
 
         godot_print!("Creating player's client...");
 
-        let handle = client.bind().runtime.as_ref().unwrap().handle().clone();
-        match handle.block_on(client.bind_mut().send_handshake()) {
+        let response = AsyncRuntime::block_on(client.bind_mut().send_handshake());
+        match response {
             Ok(id) => {
                 self.player_id = Some(id);
 
@@ -100,8 +104,9 @@ impl INode2D for World {
 
                 godot_print!("Player connected to NetworkClient node");
             }
-            _ => {}
+            Err(_) => {}
         }
+
         client.bind_mut().connect_to_server();
         self.snapshot_rx = client.bind_mut().start_listening();
         client.bind().send_input(5);
@@ -111,7 +116,6 @@ impl INode2D for World {
 
 #[godot_api]
 impl World {
-
     // #[func]
     pub fn on_snapshot_update(&mut self, world_wrapper: Gd<GameWorldWrapper>) {
         let world = world_wrapper.bind().game_world.clone();
