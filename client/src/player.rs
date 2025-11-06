@@ -1,7 +1,7 @@
 use crate::camera::CameraNode;
 use crate::net::NetworkClient;
 use common::player::Player;
-use godot::classes::{CharacterBody2D, Engine, ICharacterBody2D, Input};
+use godot::classes::{CharacterBody2D, Engine, ICharacterBody2D, Input, Sprite2D};
 use godot::prelude::*;
 
 #[derive(GodotClass)]
@@ -17,7 +17,6 @@ pub struct PlayerWrapper {
 #[godot_api]
 impl ICharacterBody2D for PlayerWrapper {
     fn init(base: Base<CharacterBody2D>) -> Self {
-
         Self {
             base,
             id: 0,
@@ -39,14 +38,20 @@ impl ICharacterBody2D for PlayerWrapper {
     fn ready(&mut self) {}
 
     fn physics_process(&mut self, delta: f64) {
-        {
-            let new_post = Vector2 {
-                x: self.data.x,
-                y: self.data.y,
-            };
-            let rotation = self.data.rotation;
-            self.base_mut().set_global_position(new_post);
-            self.base_mut().set_rotation(rotation);
+        let new_post = Vector2 {
+            x: self.data.x,
+            y: self.data.y,
+        };
+        let rotation = self.data.rotation;
+        let sprite = self.base_mut().get_child(0);
+        match sprite {
+            Some(s) => {
+                if let Ok(mut sp) = s.try_cast::<Sprite2D>() {
+                    self.base_mut().set_global_position(new_post);
+                    sp.set_rotation(rotation);
+                }
+            }
+            None => {}
         }
 
         let input = Input::singleton();

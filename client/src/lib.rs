@@ -8,6 +8,7 @@ pub mod net;
 pub mod player;
 pub mod ui_layer;
 pub mod world;
+pub mod health_bar;
 
 use godot::global::Error;
 use godot::{
