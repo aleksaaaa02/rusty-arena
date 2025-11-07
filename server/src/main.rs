@@ -23,29 +23,26 @@ async fn main() -> io::Result<()> {
     let (input_tcp_tx, input_tcp_rx) = mpsc::channel::<(SocketAddr, u32)>(128);
 
     let clients = Arc::new(Mutex::new(HashSet::<SocketAddr>::new()));
-    let id_counter = Arc::new(AtomicU32::new(0));
 
     {
         // TCP/Auth -> ovo kasnije ce biti posebna aplikacija
-        let id_counter = id_counter.clone();
         let input_tcp_tx = input_tcp_tx.clone();
         let tcp_socket = tcp_socket.clone();
         tokio::spawn(async move {
-            let mut buf = [0u8; 64];
+            let mut buf = [0u8; 4];
 
             loop {
                 if let Ok((mut stream, addr)) = tcp_socket.accept().await {
-                    let player_id =
-                        id_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed) as u32;
 
-                    let n = stream.read(&mut buf).await.unwrap();
-                    let req = String::from_utf8_lossy(&buf[..n]);
+                    let n = stream.read_exact(&mut buf).await.unwrap();
 
-                    println!("{req}");
-
-                    if req.trim() == "HELLO_UWU" {
-                        println!("HELLO_UWU_I_TEBI")
+                    if n > 4 {
+                        eprint!("Something rusty is going on");
                     }
+
+                    let player_id = u32::from_be_bytes(buf);
+
+                    println!("{player_id}");
 
                     let _ = stream.write_all(&player_id.to_be_bytes()).await;
                     let _ = stream.flush().await;

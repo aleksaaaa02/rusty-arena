@@ -12,14 +12,15 @@ use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 use crate::game_world::GameWorldWrapper;
 use crate::net::async_runtime::AsyncRuntime;
-use crate::net::packets::{AuthResponse, LoginRequest};
 
 #[derive(GodotClass)]
 #[class(init, base=Object)]
 pub struct NetworkClient {
     base: Base<Object>,
     socket: Option<Arc<UdpSocket>>,
-    game_server_address: String,
+    game_server_address_udp: String,
+    game_server_address_tcp: String,
+    controller_id: u32,
     pub auth_server_address: String,
     pub snapshot_rx: Option<UnboundedReceiver<GameWorld>>,
 }
@@ -66,7 +67,7 @@ impl NetworkClient {
 
     // #[func]
     pub fn connect_to_server(&mut self) {
-        let addr = &self.game_server_address;
+        let addr = &self.game_server_address_udp;
         let sock_future = async move {
             match UdpSocket::bind("0.0.0.0:0").await {
                 Ok(sock) => {
@@ -101,17 +102,28 @@ impl NetworkClient {
         });
     }
 
-    pub fn set_config(&mut self, game_server_address: String, auth_server_address: String) {
+    pub fn set_controller_id(&mut self, controller_id: u32) {
+        self.controller_id = controller_id;
+    }
+
+    pub fn controller_id(&self) -> u32 {
+        self.controller_id
+    }
+
+    pub fn set_config(&mut self, game_server_address_udp: String, game_server_address_tcp: String, auth_server_address: String) {
         self.auth_server_address = auth_server_address;
-        self.game_server_address = game_server_address;
+        self.game_server_address_udp = game_server_address_udp;
+        self.game_server_address_tcp = game_server_address_tcp;
     }
 
     pub async fn send_handshake(&mut self) -> Result<u32, std::io::Error> {
-        let auth_address = &self.auth_server_address;
+        let auth_address = &self.game_server_address_tcp;
         let mut stream = TcpStream::connect(auth_address).await?;
 
-        let request = b"HELLO_UWU";
-        stream.write_all(request).await?;
+        let id = self.controller_id;
+
+        let request = self.controller_id.to_be_bytes();
+        stream.write_all(&request).await?;
 
         let mut buffer = [0u8; 4];
         stream.read_exact(&mut buffer).await?;
@@ -121,32 +133,4 @@ impl NetworkClient {
         Ok(player_id)
     }
 
-    pub fn login(&self, username: String, password: String) {
-        let username = username.to_string();
-        let password = password.to_string();
-        let server_address = self.auth_server_address.clone();
-
-        AsyncRuntime::spawn(async move {
-            let client = reqwest::Client::new();
-            let payload = LoginRequest { username, password };
-
-            match client
-                .post(server_address) // <-- your auth server
-                .json(&payload)
-                .send()
-                .await
-            {
-                Ok(resp) if resp.status().is_success() => {
-                    if let Ok(user) = resp.json::<AuthResponse>().await {
-                        godot_print!("Login success! user_id = {}", user.id);
-                        // Here you can connect to the game server using user.user_id
-                    } else {
-                        godot_print!("Login failed: invalid response");
-                    }
-                }
-                Ok(resp) => godot_print!("Login failed: {}", resp.status()),
-                Err(err) => godot_print!("Login request error: {}", err),
-            }
-        });
-    }
 }

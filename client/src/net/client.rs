@@ -18,20 +18,26 @@ struct AuthResponse {
     id: u32,
 }
 
+#[derive(Deserialize, Clone)]
+struct GetServersResponse {
+    servers: Vec<String>,
+}
+
 #[derive(Clone)]
-enum AuthResult {
+enum RequestResult {
     LoginOk(AuthResponse),
     RegisterOk(AuthResponse),
     Error(String),
+    GetServersOk(GetServersResponse),
 }
 
 #[derive(GodotClass)]
 #[class(base=Node)]
 pub struct NetworkAPI {
     base: Base<Node>,
-    tx: mpsc::Sender<AuthResult>,
-    rx: Option<mpsc::Receiver<AuthResult>>,
-    last_message: Option<AuthResult>,
+    tx: mpsc::Sender<RequestResult>,
+    rx: Option<mpsc::Receiver<RequestResult>>,
+    last_message: Option<RequestResult>,
     server_address: String,
 }
 
@@ -64,14 +70,21 @@ impl INode for NetworkAPI {
             match rx.try_recv() {
                 Ok(msg) => {
                     match &msg {
-                        AuthResult::LoginOk(r) => {
-                            self.base_mut().emit_signal("login_response_arrived", &[Variant::from(r.id)]);
+                        RequestResult::LoginOk(r) => {
+                            self.base_mut()
+                                .emit_signal("login_response_arrived", &[Variant::from(r.id)]);
                             godot_print!("Login success: {}", r.id)
                         }
-                        AuthResult::RegisterOk(r) => {
+                        RequestResult::RegisterOk(r) => {
                             godot_print!("Register success: {}", r.id)
                         }
-                        AuthResult::Error(e) => godot_print!("Auth error: {}", e),
+                        RequestResult::GetServersOk(r) => {
+                            let servers = r.servers.clone();
+                            let arr = Array::from_iter(servers.iter().map(|s| GString::from(s)));
+                            self.base_mut()
+                                .emit_signal("get_servers_response_arrived", &[arr.to_variant()]);
+                        }
+                        RequestResult::Error(e) => godot_print!("Auth error: {}", e),
                     }
                     self.last_message = Some(msg);
                 }
@@ -90,7 +103,7 @@ impl NetworkAPI {
     pub fn register_response_arrived(id: u32);
 
     #[signal]
-    pub fn get_servers_response_arrived(id: u32);
+    pub fn get_servers_response_arrived(data: Array<GString>);
 
     #[func]
     pub fn login(&self, username: GString, password: GString) {
@@ -109,12 +122,12 @@ impl NetworkAPI {
                 let result = match client.post(server_address).json(&payload).send().await {
                     Ok(resp) if resp.status().is_success() => {
                         match resp.json::<AuthResponse>().await {
-                            Ok(r) => AuthResult::LoginOk(r),
-                            Err(_) => AuthResult::Error("Invalid JSON".into()),
+                            Ok(r) => RequestResult::LoginOk(r),
+                            Err(_) => RequestResult::Error("Invalid JSON".into()),
                         }
                     }
-                    Ok(resp) => AuthResult::Error(format!("HTTP {}", resp.status())),
-                    Err(err) => AuthResult::Error(err.to_string()),
+                    Ok(resp) => RequestResult::Error(format!("HTTP {}", resp.status())),
+                    Err(err) => RequestResult::Error(err.to_string()),
                 };
 
                 let _ = tx.send(result).await;
@@ -138,12 +151,37 @@ impl NetworkAPI {
                 let result = match client.post(server_address).json(&payload).send().await {
                     Ok(resp) if resp.status().is_success() => {
                         match resp.json::<AuthResponse>().await {
-                            Ok(r) => AuthResult::RegisterOk(r),
-                            Err(_) => AuthResult::Error("Invalid JSON".into()),
+                            Ok(r) => RequestResult::RegisterOk(r),
+                            Err(_) => RequestResult::Error("Invalid JSON".into()),
                         }
                     }
-                    Ok(resp) => AuthResult::Error(format!("HTTP {}", resp.status())),
-                    Err(err) => AuthResult::Error(err.to_string()),
+                    Ok(resp) => RequestResult::Error(format!("HTTP {}", resp.status())),
+                    Err(err) => RequestResult::Error(err.to_string()),
+                };
+
+                let _ = tx.send(result).await;
+            });
+        });
+    }
+
+    pub fn get_servers(&self) {
+        let tx = self.tx.clone();
+        let server_address = format!("http://{}/server", self.server_address.clone());
+
+        thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async move {
+                let client = Client::new();
+
+                let result = match client.get(server_address).send().await {
+                    Ok(resp) if resp.status().is_success() => {
+                        match resp.json::<GetServersResponse>().await {
+                            Ok(r) => RequestResult::GetServersOk(r),
+                            Err(_) => RequestResult::Error("Invalid JSON".into()),
+                        }
+                    }
+                    Ok(resp) => RequestResult::Error(format!("HTTP {}", resp.status())),
+                    Err(err) => RequestResult::Error(err.to_string()),
                 };
 
                 let _ = tx.send(result).await;

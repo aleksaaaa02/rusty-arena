@@ -68,7 +68,6 @@ impl INode2D for World {
                 let world_wrapped = GameWorldWrapper::from_game_world(world);
                 // godot_print!("Render...");
                 self.on_snapshot_update(world_wrapped, delta);
-
             }
         }
     }
@@ -83,7 +82,6 @@ impl INode2D for World {
         };
 
         godot_print!("Creating player's client...");
-
         let response = AsyncRuntime::block_on(client.bind_mut().send_handshake());
         match response {
             Ok(id) => {
@@ -102,7 +100,10 @@ impl INode2D for World {
                 }
                 self.players.insert(id, local_player);
 
-                godot_print!("Player connected to NetworkClient node");
+                let c = client.bind().controller_id();
+
+                godot_print!("Player connected to NetworkClient node {id}");
+                godot_print!("Player connected to NetworkClient node {c}");
             }
             Err(_) => {}
         }
@@ -117,7 +118,6 @@ impl INode2D for World {
 
 #[godot_api]
 impl World {
-
     pub fn on_snapshot_update(&mut self, world_wrapper: Gd<GameWorldWrapper>, delta: f64) {
         let world = world_wrapper.bind().game_world.clone();
 
@@ -230,3 +230,25 @@ impl World {
         }
     }
 }
+
+        // godot_print!("Creating player's client...");
+        // let mut local_player = self.player_scene.instantiate_as::<PlayerWrapper>();
+        // let controller_id = client.bind().controller_id();
+        // local_player.bind_mut().set_id(controller_id);
+        // local_player.bind_mut().set_controller_id(controller_id);
+        // local_player.bind_mut().spawn_camera();
+        // self.base_mut()
+        //     .add_child(&local_player.clone().upcast::<Node>());
+
+        // if let mut ui_node = self.base().get_node_as::<UiLayer>("../UI") {
+        //     ui_node.bind_mut().connect_to_player(local_player.clone());
+        // }
+        // self.players.insert(controller_id, local_player);
+        // godot_print!("Player connected to NetworkClient node");
+
+        // if let Some(player_id) = self.player_id {
+        //     client.bind_mut().connect_to_server();
+        //     self.snapshot_rx = client.bind_mut().start_listening();
+        //     client.bind().send_input(player_id, 0, 5);
+        //     self.network_client = Some(client);
+        // }

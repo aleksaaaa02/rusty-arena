@@ -34,15 +34,17 @@ unsafe impl ExtensionLibrary for MyExtension {
         let err = conf.load("res://server.cfg");
 
         if err == Error::OK {
-            let game_server = conf.get_value("GameServer", "address").to_string();
+            let game_server_udp = conf.get_value("GameServer", "address_udp").to_string();
+            let game_server_tcp = conf.get_value("GameServer", "address_tcp").to_string();
             let auth_server = conf.get_value("AuthServer", "address").to_string();
-            godot_print!("Hello, GameServer: {game_server} | AuthServer: {auth_server}");
-            instance.bind_mut().set_config(game_server, auth_server);
+            // godot_print!("Hello, GameServer: {game_server} | AuthServer: {auth_server}");
+            instance.bind_mut().set_config(game_server_udp, game_server_tcp, auth_server);
         } else {
-            let game_server = String::from("127.0.0.1:8080");
-            let auth_server = String::from("127.0.0.1:8081");
-            godot_print!("Going to defauls, GameServer: {game_server} | AuthServer: {auth_server}");
-            instance.bind_mut().set_config(game_server, auth_server);
+            let game_server_udp = String::from("127.0.0.1:8080");
+            let game_server_tcp = String::from("127.0.0.1:8081");
+            let auth_server = String::from("127.0.0.1:3000");
+            // godot_print!("Going to defauls, GameServer: {game_server} | AuthServer: {auth_server}");
+            instance.bind_mut().set_config(game_server_udp, game_server_tcp, auth_server);
         }
 
         Engine::singleton().register_singleton("NetworkClient", &instance);

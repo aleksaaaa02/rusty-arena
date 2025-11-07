@@ -53,6 +53,6 @@ offset_bottom = 23.0
 
 [node name="NetworkAPI" type="NetworkAPI" parent="."]
 
-[connection signal="pressed" from="CanvasLayer/WelcomeScreen/Login" to="." method="new_game_pressed"]
+[connection signal="pressed" from="CanvasLayer/WelcomeScreen/Login" to="." method="on_login_click"]
 [connection signal="pressed" from="CanvasLayer/WelcomeScreen/Register" to="." method="on_register_click"]
-[connection signal="login_response_arrived" from="NetworkAPI" to="." method="on_login_success_happend"]
+[connection signal="login_response_arrived" from="NetworkAPI" to="." method="on_login_success"]
