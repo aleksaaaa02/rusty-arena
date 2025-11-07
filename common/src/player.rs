@@ -11,6 +11,7 @@ pub struct Player {
     pub hp: u16,
     pub last_shot_ms: u64,
     pub fire_rate_ms: u64,
+    pub last_processed_input_seq: u32,
 }
 
 impl Player {
@@ -24,7 +25,8 @@ impl Player {
             vy: 0.0,
             hp: 100,
             last_shot_ms: 0,
-            fire_rate_ms: 100,
+            fire_rate_ms: 200,
+            last_processed_input_seq: 0,
         }
     }
 

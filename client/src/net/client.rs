@@ -1,55 +1,153 @@
-use std::sync::Arc;
-use common::game_world::GameWorld;
-use common::packet::PlayerInput;
-use tokio::net::{TcpStream, UdpSocket};
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
-use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver, unbounded_channel};
+use core::panic;
+use godot::{classes::Engine, prelude::*};
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use std::thread;
+use tokio::sync::mpsc;
 
-pub struct NetworkService {
-    socket: Arc<UdpSocket>
+use crate::net::NetworkClient;
+
+#[derive(Serialize)]
+struct AuthRequest {
+    username: String,
+    password: String,
 }
 
-impl NetworkService {
-    pub async fn authenticate(server_ip: &str, port: u16) -> Result<u32, std::io::Error> {
-        let mut stream = TcpStream::connect((server_ip, port)).await?;
-        stream.write_all(b"HELLO_UWU").await?;
+#[derive(Deserialize, Clone)]
+struct AuthResponse {
+    id: u32,
+}
 
-        let mut buf = [0u8; 4];
-        stream.read_exact(&mut buf).await?;
-        Ok(u32::from_be_bytes(buf))
+#[derive(Clone)]
+enum AuthResult {
+    LoginOk(AuthResponse),
+    RegisterOk(AuthResponse),
+    Error(String),
+}
+
+#[derive(GodotClass)]
+#[class(base=Node)]
+pub struct NetworkAPI {
+    base: Base<Node>,
+    tx: mpsc::Sender<AuthResult>,
+    rx: Option<mpsc::Receiver<AuthResult>>,
+    last_message: Option<AuthResult>,
+    server_address: String,
+}
+
+#[godot_api]
+impl INode for NetworkAPI {
+    fn init(base: Base<Node>) -> Self {
+        let client = match Engine::singleton().get_singleton("NetworkClient") {
+            None => {
+                godot_error!("Failed to get singleton");
+                panic!("wooh wooh");
+            }
+            Some(s) => s.try_cast::<NetworkClient>().unwrap(),
+        };
+        let server_address = client.bind().auth_server_address.clone();
+        let (tx, rx) = mpsc::channel(8);
+        Self {
+            base,
+            tx,
+            rx: Some(rx),
+            last_message: None,
+            server_address,
+        }
     }
 
-    pub async fn connect(server_ip: &str, port: u16)
-        -> Result<(Self, UnboundedReceiver<GameWorld>), std::io::Error>
-    {
-        let socket = Arc::new(UdpSocket::bind("0.0.0.0:0").await?);
-        socket.connect((server_ip, port)).await?;
+    fn ready(&mut self) {}
 
-        let (tx, rx) = unbounded_channel::<GameWorld>();
+    fn process(&mut self, _delta: f64) {
+        // poll messages (non-blocking)
+        if let Some(rx) = &mut self.rx {
+            match rx.try_recv() {
+                Ok(msg) => {
+                    match &msg {
+                        AuthResult::LoginOk(r) => {
+                            self.base_mut().emit_signal("login_response_arrived", &[Variant::from(r.id)]);
+                            godot_print!("Login success: {}", r.id)
+                        }
+                        AuthResult::RegisterOk(r) => {
+                            godot_print!("Register success: {}", r.id)
+                        }
+                        AuthResult::Error(e) => godot_print!("Auth error: {}", e),
+                    }
+                    self.last_message = Some(msg);
+                }
+                Err(_) => {}
+            }
+        }
+    }
+}
 
-        let sock = socket.clone();
-        tokio::spawn(async move {
-            let mut buf = [0u8; 4096];
-            let config = bincode::config::standard();
-            loop {
-                if let Ok(len) = sock.recv(&mut buf).await {
-                    if let Ok((world, _)) = bincode::decode_from_slice::<GameWorld, _>(&buf[..len], config) {
-                        if tx.send(world).is_err() {
-                            break;
+#[godot_api]
+impl NetworkAPI {
+    #[signal]
+    pub fn login_response_arrived(id: u32);
+
+    #[signal]
+    pub fn register_response_arrived(id: u32);
+
+    #[signal]
+    pub fn get_servers_response_arrived(id: u32);
+
+    #[func]
+    pub fn login(&self, username: GString, password: GString) {
+        let tx = self.tx.clone();
+        let username = username.to_string();
+        let password = password.to_string();
+        let server_address = format!("http://{}/login", self.server_address.clone());
+        godot_print!("{username} {password} {server_address}");
+
+        thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async move {
+                let client = Client::new();
+                let payload = AuthRequest { username, password };
+
+                let result = match client.post(server_address).json(&payload).send().await {
+                    Ok(resp) if resp.status().is_success() => {
+                        match resp.json::<AuthResponse>().await {
+                            Ok(r) => AuthResult::LoginOk(r),
+                            Err(_) => AuthResult::Error("Invalid JSON".into()),
                         }
                     }
-                } else {
-                    break;
-                }
-            }
+                    Ok(resp) => AuthResult::Error(format!("HTTP {}", resp.status())),
+                    Err(err) => AuthResult::Error(err.to_string()),
+                };
+
+                let _ = tx.send(result).await;
+            });
         });
-
-        Ok((Self { socket }, rx))
     }
 
-    pub async fn send_input(&self, input: PlayerInput) {
-        let bytes = bincode::encode_to_vec(input, bincode::config::standard()).unwrap();
-        let _ = self.socket.send(&bytes).await;
-    }
+    #[func]
+    pub fn register(&self, username: GString, password: GString) {
+        let tx = self.tx.clone();
+        let username = username.to_string();
+        let password = password.to_string();
+        let server_address = format!("http://{}/register", self.server_address.clone());
 
+        thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async move {
+                let client = Client::new();
+                let payload = AuthRequest { username, password };
+
+                let result = match client.post(server_address).json(&payload).send().await {
+                    Ok(resp) if resp.status().is_success() => {
+                        match resp.json::<AuthResponse>().await {
+                            Ok(r) => AuthResult::RegisterOk(r),
+                            Err(_) => AuthResult::Error("Invalid JSON".into()),
+                        }
+                    }
+                    Ok(resp) => AuthResult::Error(format!("HTTP {}", resp.status())),
+                    Err(err) => AuthResult::Error(err.to_string()),
+                };
+
+                let _ = tx.send(result).await;
+            });
+        });
+    }
 }

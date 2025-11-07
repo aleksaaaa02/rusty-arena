@@ -58,18 +58,17 @@ impl INode2D for World {
 
     fn process(&mut self, delta: f64) {
         if let Some(rx) = &mut self.snapshot_rx {
-            let mut worlds = Vec::new();
+            let mut last_world = None;
 
             while let Ok(world) = rx.try_recv() {
-                worlds.push(world);
+                last_world = Some(world);
             }
 
-            // self.snapshot_rx = Some(rx);
-
-            for world in worlds {
+            if let Some(world) = last_world {
                 let world_wrapped = GameWorldWrapper::from_game_world(world);
                 // godot_print!("Render...");
-                self.on_snapshot_update(world_wrapped);
+                self.on_snapshot_update(world_wrapped, delta);
+
             }
         }
     }
@@ -93,6 +92,7 @@ impl INode2D for World {
                 // local player spawn
                 let mut local_player = self.player_scene.instantiate_as::<PlayerWrapper>();
                 local_player.bind_mut().set_id(id);
+                local_player.bind_mut().set_controller_id(id);
                 local_player.bind_mut().spawn_camera();
                 self.base_mut()
                     .add_child(&local_player.clone().upcast::<Node>());
@@ -106,29 +106,34 @@ impl INode2D for World {
             }
             Err(_) => {}
         }
-
-        client.bind_mut().connect_to_server();
-        self.snapshot_rx = client.bind_mut().start_listening();
-        client.bind().send_input(5);
-        self.network_client = Some(client);
+        if let Some(player_id) = self.player_id {
+            client.bind_mut().connect_to_server();
+            self.snapshot_rx = client.bind_mut().start_listening();
+            client.bind().send_input(player_id, 0, 5);
+            self.network_client = Some(client);
+        }
     }
 }
 
 #[godot_api]
 impl World {
-    // #[func]
-    pub fn on_snapshot_update(&mut self, world_wrapper: Gd<GameWorldWrapper>) {
+
+    pub fn on_snapshot_update(&mut self, world_wrapper: Gd<GameWorldWrapper>, delta: f64) {
         let world = world_wrapper.bind().game_world.clone();
 
         // Setup players
         for (id, player_data) in world.clone().unwrap().players {
             if let Some(player) = self.players.get_mut(&id) {
-                player.bind_mut().update_position(Vector3 {
-                    x: player_data.x,
-                    y: player_data.y,
-                    z: player_data.rotation,
-                });
-                player.bind_mut().update_health(player_data.hp);
+                if Some(id) == self.player_id {
+                    player.bind_mut().reconcile_with_server(player_data, delta);
+                } else {
+                    player.bind_mut().update_position(Vector3 {
+                        x: player_data.x,
+                        y: player_data.y,
+                        z: player_data.rotation,
+                    });
+                    player.bind_mut().update_health(player_data.hp);
+                }
             } else {
                 godot_print!("new player");
                 let mut player = self.player_scene.instantiate_as::<PlayerWrapper>();

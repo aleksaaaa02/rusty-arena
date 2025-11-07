@@ -1,7 +1,9 @@
 use bincode::{Decode, Encode};
 use std::collections::{HashMap, HashSet};
 
-use crate::{asteroid::Asteroid, bullet::Bullet, packet::PlayerInput, player::Player, utils::current_time_ms};
+use crate::{
+    asteroid::Asteroid, bullet::Bullet, packet::PlayerInput, player::Player, utils::current_time_ms,
+};
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct Bounds {
@@ -22,7 +24,6 @@ pub struct GameWorld {
     pub asteroid_id_counter: u32,
     pub last_spawn_asteroid: u64,
 }
-
 
 impl GameWorld {
     pub fn new() -> Self {
@@ -137,6 +138,10 @@ impl GameWorld {
 
     pub fn apply_input(&mut self, player_id: u32, input: &PlayerInput) {
         if let Some(player) = self.players.get_mut(&player_id) {
+            if input.seq  <= player.last_processed_input_seq {
+                return;
+            }
+
             match input.action {
                 crate::packet::InputAction::RotateLeft => {
                     player.rotation -= 0.05;
@@ -168,21 +173,19 @@ impl GameWorld {
                     let force = 1.0;
                     player.vx += force * player.rotation.cos();
                     player.vy += force * player.rotation.sin();
-                },
+                }
                 crate::packet::InputAction::Hello => {
-                    // initial handshake so screen don't freeze on gamge init
-                    // just letting server know that it should broadcast it's state to new player
+                    // initial handshake so screen don't freeze on game init
+                    // just letting server know that it should broadcast it's state to a new player
                 }
             }
+            player.last_processed_input_seq = input.seq;
         } else {
             eprintln!("Entity with id: {player_id} not found!")
         }
     }
 
     pub fn add_player(&mut self, player_id: u32) {
-        self.players.insert(
-            player_id,
-            Player::new(player_id)
-        );
+        self.players.insert(player_id, Player::new(player_id));
     }
 }

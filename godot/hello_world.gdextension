@@ -6,8 +6,8 @@ reloadable = true
 [libraries]
 linux.debug.x86_64 =     "res://../client/target/debug/libclient.so"
 linux.release.x86_64 =   "res://../client/target/release/libclient.so"
-windows.debug.x86_64 =   "res://../client/target/debug/client.dll"
-windows.release.x86_64 = "res://../client/target/release/client.dll"
+windows.debug.x86_64 =   "res://../client/target/x86_64-pc-windows-gnu/debug/client.dll"
+windows.release.x86_64 = "res://../client/target/x86_64-pc-windows-gnu/release/client.dll"
 macos.debug =            "res://../client/target/debug/libclient.dylib"
 macos.release =          "res://../client/target/release/libclient.dylib"
 macos.debug.arm64 =      "res://../client/target/debug/libclient.dylib"

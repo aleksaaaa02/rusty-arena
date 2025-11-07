@@ -4,11 +4,55 @@
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
-[node name="Button" type="Button" parent="CanvasLayer"]
-offset_left = 520.0
-offset_top = 295.0
-offset_right = 637.0
-offset_bottom = 371.0
-text = "Start Game"
+[node name="WelcomeScreen" type="CanvasGroup" parent="CanvasLayer"]
 
-[connection signal="pressed" from="CanvasLayer/Button" to="." method="new_game_pressed"]
+[node name="Login" type="Button" parent="CanvasLayer/WelcomeScreen"]
+offset_left = 475.0
+offset_top = 400.0
+offset_right = 575.0
+offset_bottom = 440.0
+text = "Login"
+
+[node name="Register" type="Button" parent="CanvasLayer/WelcomeScreen"]
+offset_left = 585.0
+offset_top = 400.0
+offset_right = 675.0
+offset_bottom = 440.0
+text = "Register"
+
+[node name="Username" type="LineEdit" parent="CanvasLayer/WelcomeScreen"]
+offset_left = 475.0
+offset_top = 300.0
+offset_right = 675.0
+offset_bottom = 340.0
+placeholder_text = "username"
+
+[node name="Password" type="LineEdit" parent="CanvasLayer/WelcomeScreen"]
+offset_left = 475.0
+offset_top = 350.0
+offset_right = 675.0
+offset_bottom = 390.0
+placeholder_text = "password"
+
+[node name="Tittle" type="Label" parent="CanvasLayer/WelcomeScreen"]
+modulate = Color(1, 0.62352943, 0.2901961, 1)
+offset_left = 375.0
+offset_top = 200.0
+offset_right = 775.0
+offset_bottom = 263.0
+theme_override_font_sizes/font_size = 45
+text = "RUSTY ARENA"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Info" type="Label" parent="CanvasLayer/WelcomeScreen"]
+offset_right = 40.0
+offset_bottom = 23.0
+
+[node name="ServerList" type="CanvasGroup" parent="CanvasLayer"]
+
+[node name="NetworkAPI" type="NetworkAPI" parent="."]
+
+[connection signal="pressed" from="CanvasLayer/WelcomeScreen/Login" to="." method="new_game_pressed"]
+[connection signal="pressed" from="CanvasLayer/WelcomeScreen/Register" to="." method="on_register_click"]
+[connection signal="login_response_arrived" from="NetworkAPI" to="." method="on_login_success_happend"]
