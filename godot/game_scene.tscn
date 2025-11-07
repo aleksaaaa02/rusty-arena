@@ -1,6 +1,17 @@
-[gd_scene format=3 uid="uid://fjql0s61n1fo"]
+[gd_scene load_steps=2 format=3 uid="uid://fjql0s61n1fo"]
+
+[ext_resource type="Texture2D" uid="uid://dxkrgra3w7erk" path="res://background.jpg" id="1_mlf6e"]
 
 [node name="Game" type="Node2D"]
+
+[node name="TextureRect" type="TextureRect" parent="."]
+offset_left = -2665.0
+offset_top = -1972.0
+offset_right = 2804.0
+offset_bottom = 1792.0
+mouse_filter = 2
+texture = ExtResource("1_mlf6e")
+stretch_mode = 1
 
 [node name="World" type="World" parent="."]
 

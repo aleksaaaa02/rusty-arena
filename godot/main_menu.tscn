@@ -1,4 +1,6 @@
-[gd_scene format=3 uid="uid://e0mv5o8xiwqg"]
+[gd_scene load_steps=2 format=3 uid="uid://e0mv5o8xiwqg"]
+
+[ext_resource type="Texture2D" uid="uid://dxkrgra3w7erk" path="res://background.jpg" id="1_06t4h"]
 
 [node name="MainMenu" type="MainMenuNode"]
 
@@ -52,6 +54,15 @@ offset_bottom = 23.0
 [node name="ServerList" type="CanvasGroup" parent="CanvasLayer"]
 
 [node name="NetworkAPI" type="NetworkAPI" parent="."]
+
+[node name="TextureRect" type="TextureRect" parent="."]
+offset_left = -300.0
+offset_top = -227.0
+offset_right = 1523.0
+offset_bottom = 1000.0
+mouse_filter = 2
+texture = ExtResource("1_06t4h")
+stretch_mode = 1
 
 [connection signal="pressed" from="CanvasLayer/WelcomeScreen/Login" to="." method="on_login_click"]
 [connection signal="pressed" from="CanvasLayer/WelcomeScreen/Register" to="." method="on_register_click"]
