@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
 enum AppError {
     BadRequest(String),
     Unauthorized(String),
